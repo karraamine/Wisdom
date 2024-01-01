@@ -17,7 +17,7 @@ class App(customtkinter.CTk):
     self._set_appearance_mode("light")
     self.title(title)
     self.geometry(f"{size[0]}x{size[1]}")
-    self.minsize(size[0],size[1])
+    # self.minsize(size[0],size[1])
   
   def create_layout(self):
     self.columnconfigure(0,weight=2,uniform="a")
@@ -43,22 +43,25 @@ class Chat(customtkinter.CTkFrame):
     self.grid(row=0,column=1,sticky="nsew")
 
     self.create_frames()
-    self.configure_frames()
     self.create_widgets()
     self.place_frames()
     self.place_widgets()
 
-    self._iota = 0
+    
 
   def create_frames(self):
+    print("create frames")
     self.header    = customtkinter.CTkFrame(master=self,corner_radius=0,fg_color="#f4f5f9")
-    self.main      = customtkinter.CTkFrame(master=self,corner_radius=0,fg_color="#f4f5f9") 
-    self.bottom    = customtkinter.CTkFrame(master=self,corner_radius=0,fg_color="#f4f5f9") 
+
+    text_data = []
+    item_height = 60
+    self.main       = ListFrame(self,text_data,item_height)
+    self.bottom     = customtkinter.CTkFrame(master=self,corner_radius=0,fg_color="#f4f5f9") 
     self.separator1 = Divider(master=self)
     self.separator2 = Divider(master=self)
 
-  def configure_frames(self):
-    self.main .columnconfigure((0,1,2),weight=1)
+
+    
 
   def load_imgs(self):
     self.us_persona_img = customtkinter.CTkImage(
@@ -105,6 +108,8 @@ class Chat(customtkinter.CTkFrame):
     self.main.pack(expand=True,fill="both")
     self.separator2.pack(fill="x")
     self.bottom.pack(fill="x")
+
+
   
   def place_widgets(self):
     self.header_label.pack(side="left",padx=15,pady=5)
@@ -117,30 +122,88 @@ class Chat(customtkinter.CTkFrame):
 
   
   def chat_callback(self):
-    message = self.chat_input.get()
-    self._iota += 1
-    message_label = customtkinter.CTkLabel(master=self.main,
-                                          text=message,
+    message =  self.chat_input.get()
+    self.main.update(message)
+    self.chat_input.delete(0,END)
+
+
+class ListFrame(customtkinter.CTkFrame):
+  def __init__(self,master,text_data,item_height):
+    super().__init__(master=master)
+    self.init(text_data,item_height)
+    
+
+  def init(self,text_data,item_height):
+
+    # data 
+    self.list_data = text_data
+    self.list_number = len(text_data)
+    self.list_height = self.list_number * item_height
+
+    # canvas 
+    self.canvas = Canvas(master=self,background="#f4f5f9",scrollregion=(0,0,self.winfo_width(),self.list_height),bd=0, highlightthickness=0, relief='ridge')
+    self.canvas.pack(expand=True,fill='both')
+
+
+    # main frame that canvas will draws 
+    self.frame = customtkinter.CTkFrame(master=self,fg_color="#f4f5f9",corner_radius=0)
+    for index,item in enumerate(self.list_data):
+      self.create_item(index,item).pack(expand=True,fill='both')
+
+    self.canvas.create_window(
+      (0,0),
+      window=self.frame,
+      anchor="nw",
+      width=self.winfo_width(),
+      height=self.list_height
+    )
+
+    self.bind("<Configure>",self.update_size)
+
+  def update_size(self,event):
+    if self.list_height >= self.winfo_height():
+      self.canvas.bind_all('<Button-4>', lambda event: self.canvas.yview_scroll(-int(30),"units"))
+      self.canvas.bind_all('<Button-5>', lambda event: self.canvas.yview_scroll(+int(30),"units"))
+    else : 
+      self.canvas.unbind_all("<Button-4>")
+      self.canvas.unbind_all("<Button-5>")
+
+    self.canvas.create_window((0,0),
+                              window=self.frame
+                              ,anchor="nw",
+                              width=self.winfo_width()
+                              ,height=self.list_height)
+
+    print(self.list_height)    
+
+  def update(self,message):
+    self.canvas.destroy()
+    self.list_data.append(message) 
+    item_height = 60 
+    self.init(self.list_data,item_height)
+    if self.list_height >= self.winfo_height():
+      self.canvas.bind_all('<Button-4>', lambda event: self.canvas.yview_scroll(-int(30),"units"))
+      self.canvas.bind_all('<Button-5>', lambda event: self.canvas.yview_scroll(+int(30),"units"))
+    self.canvas.yview_moveto( 1 )
+    
+  def create_item(self,index,item):
+    frame = customtkinter.CTkFrame(master=self.frame,fg_color="#f4f5f9",corner_radius=0)
+
+    frame.rowconfigure(0,weight=1)
+    frame.columnconfigure((0,1),weight=1,uniform="a")
+
+    message_label = customtkinter.CTkLabel(master=frame,
+                                          text=item,
                                           fg_color="#DDE3EF",
                                           text_color="#212121",
                                           font=("Arial",12),
                                           corner_radius=12
                                           
                                           )
-    message_label.grid(row=self._iota,column=1,columnspan=2,sticky="e",ipadx=8,ipady=4,padx=15,pady=5)
+    message_label.grid(row=index,column=1,columnspan=2,sticky="e",ipadx=8,ipady=4,padx=5,pady=5)
 
-    self._iota += 1
-    answer_label = customtkinter.CTkLabel(master=self.main,
-                                          text="answer",
-                                          fg_color="#FFFFFF",
-                                          text_color="#212121",
-                                          font=("Arial",12),
-                                          corner_radius=12
-                                          
-                                          )
-    answer_label.grid(row=self._iota,column=0,columnspan=2,sticky="w",ipadx=8,ipady=4,padx=15,pady=5)
+    return frame;
 
-    self.chat_input.delete(0,END)
 
 class Divider(customtkinter.CTkFrame):
   def __init__(self,master):
